@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Empeños Manlitrogamer109</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="css/pricing.css" rel="stylesheet">
+</head>
+
+<body onload="iniciarEmpeno();">
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/3.6.1/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/5.5.3/firebase-firestore.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- TODO: Add SDKs for Firebase products that you want to use
+https://firebase.google.com/docs/web/setup#available-libraries -->
+
+    <script>
+        // Your web app's Firebase configuration
+        var firebaseConfig = {
+            apiKey: "AIzaSyDtElqRR_V-vEN4EA0kUlGFB48c2c8eU44",
+            authDomain: "examen-parcial-3-bd.firebaseapp.com",
+            databaseURL: "https://examen-parcial-3-bd.firebaseio.com",
+            projectId: "examen-parcial-3-bd",
+            storageBucket: "examen-parcial-3-bd.appspot.com",
+            messagingSenderId: "314691196416",
+            appId: "1:314691196416:web:166c51f3840561f0072ae5"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        //Es una referencia a la colección de los usuarios
+        var dataDB = firebase.database().ref('Clientes');
+        var dataDBP = firebase.database().ref('Prendas');
+        var dataVP = firebase.database().ref('ventaProd');
+
+        var clientes = {};
+        var prendas = {};
+
+        cargarClientes();
+        cargarPrendas();
+
+        function getPrecio(productoX, precioX) {
+            document.getElementById(precioX).value = "";
+
+            var prendas = dataDBP.child(productoX);
+            prendas.on('value', function(data) {
+                var prod = data.val();
+                document.getElementById(precioX).value = prod.valor;
+            });
+        }
+
+
+        function calcularImporte(cant, precio, importe, subtot) {
+            //document.getElementById(importe).value = "";
+            console.log("Calcular Importe entra");
+
+            var total = cant * precio;
+            console.log("El total es: " + total);
+            document.getElementById(subtot).value = total;
+            //importe.innerText = "$" + total + ".00";
+            document.getElementById(importe).innerHTML = "$" + total + ".00";
+        }
+
+        function iniciarEmpeno() {
+            document.getElementById('segundoPaso').style.display = 'none';
+            document.getElementById('primerPaso').style.display = 'block';
+        }
+
+        function siguientePaso() {
+            var cliente = document.getElementById('clientes');
+
+            if (cliente.value == '') {
+                alert("Debes de Seleccionar un cliente");
+            } else {
+                guardarEmpeño();
+                document.getElementById('primerPaso').style.display = 'none';
+                document.getElementById('segundoPaso').style.display = 'block';
+            }
+        }
+
+        function guardarEmpeño() {
+            //Extraer la clave del user
+            var user = document.getElementById('clientes');
+
+            //Generar la fecha del sistema
+            var d = new Date();
+            var m = d.getMonth() + 1;
+            var mes = (m < 10) ? '0' + m : m;
+            var fechag = d.getFullYear() + "-" + mes + "-" + d.getDate();
+
+            //Guardando la venta. Si no existe, crea la subcolección dentro del usuario
+            dataDB.child(user.value).child('ventas').push({
+                fecha: fechag
+            });
+
+            alert('Empeño Iniciado Correctamente!');
+        }
+
+        function cargarClientes() {
+            dataDB.on('value', function(datos) {
+                //alert('que onda');
+                clientes = datos.val(); //Guarda cada usuario junto a sus datos
+                //$("select").children().remove(); //Cuando vuelve a cargar, no repite los registros
+                var select = document.getElementById('clientes');
+
+                $.each(clientes, function(indice, valor) {
+                    //alert(indice)
+                    var option = document.createElement("option");
+                    option.setAttribute("value", indice); //indice es el id del usuario
+                    option.setAttribute("label", valor.nombre);
+
+                    select.appendChild(option);
+                })
+            }, function(objetoError) {
+                console.log('Error de lectura: ' + objetoError.code)
+            });
+        }
+
+        function cargarPrendas() {
+            dataDBP.on('value', function(datos) {
+                prendas = datos.val();
+
+                for (var i = 1; i <= 3; i++) {
+                    var select = document.getElementById('prendas_' + i);
+
+                    $.each(prendas, function(indice, valor) {
+                        //alert(indice)
+                        var option = document.createElement("option");
+                        option.setAttribute("value", indice);
+                        option.setAttribute("label", valor.descripcion);
+
+                        select.appendChild(option);
+                    });
+                }
+            }, function(objetoError) {
+                console.log('Error de lectura: ' + objetoError.code)
+            });
+        }
+
+        function terminarEmpeno(idventa) {
+            var user = document.getElementById('clientes');
+            var query = dataDB.child(user.value).child('ventas').limitToLast(1);
+
+            query.on('child_added', function(snap) {
+                document.getElementById(idventa).value = snap.key;
+            });
+
+            var id = document.getElementById(idventa).value;
+            var pzas = 0;
+            var total = 0;
+
+            for (var i = 1; i <= 3; i++) {
+                var prod = document.getElementById('prendas_' + i).value;
+                var cant = document.getElementById('cantidadPrenda' + i).value;
+                var imp = document.getElementById('subtot' + i).value;
+
+                console.log("La primera linea de select me trae el producto: " + prod + ", me trae: " + cant + "y el subtotal es: " + imp);
+
+                if (prod != '') {
+                    console.log("Holi si entro");
+                    pzas += parseInt(cant);
+                    total += parseInt(imp);
+
+                    dataVP.push({
+                        idventa: id,
+                        codprod: prod,
+                        cant: cant
+                    });
+                }
+            }
+            dataDB.child(user.value).child('ventas').child(id).update({
+                pzas,
+                total
+            });
+            window.alert('Empeño Completado!');
+            window.location.href = 'index.html';
+        }
+    </script>
+    <div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom box-shadow">
+        <h5 class="my-0 mr-md-auto font-weight-normal">Empeños Manlitrogamer109</h5>
+    </div>
+
+    <div class="pricing-header px-3 py-3 pt-md-5 pb-md-4 mx-auto text-center">
+        <h1 class="display-4">Realizar Empeño</h1>
+    </div>
+
+    <div class="container">
+        <div class="card-deck mb-3 text-center">
+
+            <div class="card mb-4 box-shadow" id="primerPaso">
+                <div class="card-header">
+                    <h4 class="my-0 font-weight-normal">Seleccione Cliente</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <select class="form-control" id="clientes">
+                            <option value="">Seleccione un Cliente</option>
+                        </select>
+                    </div>
+                    <a style="color:white;" type="submit" class="btn btn-primary" onclick="siguientePaso();">Continuar</a>
+                </div>
+            </div>
+
+            <div class="card mb-4 box-shadow" id="segundoPaso">
+                <div class="card-header">
+                    <h4 class="my-0 font-weight-normal">Seleccione las Prendas</h4>
+                </div>
+                <div class="card-body">
+
+                    <div class="row">
+                        <div class="col-md-2 offset-10">
+                            <h4 style="color:red;">Subtotal:</h4>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <select class="form-control" id="prendas_1" onchange="getPrecio(this.value,'precioPrenda1')">
+                                    <option value="">Seleccione la prenda 1</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <input id="precioPrenda1" type="number" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <input id="cantidadPrenda1" type="number" class="form-control" onkeypress="if(event.keyCode==13)calcularImporte(
+                                this.value, precioPrenda1.value,'subtotal1','subtot1')">
+                        </div>
+                        <div class="col-md-3">
+                            <h3 id="subtotal1" style="color:red;">$0.0</h3>
+                            <input type="hidden" id="subtot1">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <select class="form-control" id="prendas_2" onchange="getPrecio(this.value,'precioPrenda2')">
+                                    <option value="">Seleccione la prenda 2</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <input id="precioPrenda2" type="number" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <input id="cantidadPrenda2" type="number" class="form-control" onkeypress="if(event.keyCode==13)calcularImporte(
+                                this.value, precioPrenda2.value,'subtotal2','subtot2')">
+                        </div>
+                        <div class="col-md-3">
+                            <h3 id="subtotal2" style="color:red;">$0.0</h3>
+                            <input type="hidden" id="subtot2">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <select class="form-control" id="prendas_3" onchange="getPrecio(this.value,'precioPrenda3')">
+                                    <option value="">Seleccione la prenda 3</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <input id="precioPrenda3" type="number" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <input id="cantidadPrenda3" type="number" class="form-control" onkeypress="if(event.keyCode==13)calcularImporte(
+                                this.value, precioPrenda3.value,'subtotal3','subtot3')">
+                        </div>
+                        <div class="col-md-3">
+                            <h3 id="subtotal3" style="color:red;">$0.0</h3>
+                            <input type="hidden" id="subtot3">
+                        </div>
+                    </div>
+                    <input type="hidden" id="idVenta">
+                    <button type="submit" class="btn btn-primary" onclick="terminarEmpeno('idVenta');">Realizar Empeño</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+
+</body>
+
+</html>
